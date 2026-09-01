@@ -1,0 +1,7 @@
+{
+  "name": "SEN Venezuela IODA Outage Monitor",
+  "description": "Sistema de análisis e inferencia de fallas en el Servicio Eléctrico Nacional (SEN) de Venezuela a partir de telemetría de IODA Georgia Tech.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
