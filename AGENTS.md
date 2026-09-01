@@ -53,5 +53,5 @@ Accepted ESLint warnings (don't block on them): `@typescript-eslint/no-explicit-
 
 ## Environment
 
-- `.env.example` documents `GEMINI_API_KEY`, `APP_URL`, `TRUST_PROXY`. Copy to `.env` / `.env.local`. App works without the key (fallback message in the AI modal). `.env*` gitignored except `.env.example`.
+- Env vars: `GEMINI_API_KEY`, `APP_URL`, `TRUST_PROXY` (documents in `README.md`). Copy to `.env` / `.env.local`. App works without the key (fallback message in the AI modal). `.env*` gitignored.
 - `config.ts` loads env via `import 'dotenv/config'` (reads `.env`), so it works regardless of import order.
