@@ -1,12 +1,9 @@
 # Railway deployment config (SEN Venezuela IODA Outage Monitor)
 
 [build]
-builder = "NIXPACKS"
-buildCommand = "npm ci && npm run build"
+builder = "DOCKERFILE"
 
 [deploy]
-# `start` script requires NODE_ENV=production or it boots the dev Vite middleware.
-startCommand = "NODE_ENV=production node dist/server.cjs"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
