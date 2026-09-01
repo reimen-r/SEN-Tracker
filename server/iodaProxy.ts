@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { VENEZUELA_ENTITY_IDS } from '../src/data/venezuelaGrid';
+import { VENEZUELA_ENTITY_IDS } from '../src/data/entityRegistry';
 import { TtlCache } from './cache';
 
 const UPSTREAM_BASE = 'https://api.ioda.inetintel.cc.gatech.edu/v2/signals/raw/country';

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { IodaStateDataset, OutageIncidentPreset } from '../types';
-import { INCIDENT_PRESETS, VENEZUELA_ENTITIES } from '../data/venezuelaGrid';
+import { INCIDENT_PRESETS } from '../data/venezuelaGrid';
+import { VENEZUELA_ENTITIES } from '../data/entityRegistry';
+import { ScenarioProfile, generateScenario } from '../data/syntheticTelemetry';
 import {
   Upload,
   FileCode,
@@ -106,64 +108,37 @@ export const DataIngestionModal: React.FC<DataIngestionModalProps> = ({
   };
 
   const handleGenerateCustomDataset = () => {
-    const baseStart = Math.floor(new Date('2026-08-30T04:00:00Z').getTime() / 1000);
-    const stepSec = 15 * 60;
-    const pointCount = 96;
-    const onsetIndex = Math.floor((genOnsetHour * 60) / 15);
+    const dropMult = 1 - genDropPct / 100;
+    const onsetIndex = genOnsetHour * 4; // 4 puntos por hora (paso de 15 min)
     const recoveryStartIndex = onsetIndex + 20;
 
-    const datasets: IodaStateDataset[] = VENEZUELA_ENTITIES.map((entity) => {
-      const isTarget = genTargetStates.includes(entity.id);
-      const ap: [number, number][] = [];
-      const darknet: [number, number][] = [];
-      const bgp: [number, number][] = [];
-
-      for (let i = 0; i < pointCount; i++) {
-        const ts = baseStart + i * stepSec;
-        const base = 96 + (Math.sin(i * 0.2) * 2);
-
-        let active = base;
-        let telescope = base;
-        let bgpVal = 99;
-
-        if (isTarget && i >= onsetIndex) {
-          const dropMult = 1 - genDropPct / 100;
-          if (genRecoveryType === 'NONE' || i < recoveryStartIndex) {
-            active = base * dropMult;
-            telescope = base * (dropMult * 0.9);
-            bgpVal = 50 + (dropMult * 40);
-          } else {
-            // In recovery phase
-            const recProgress = (i - recoveryStartIndex) / (pointCount - recoveryStartIndex);
-            if (genRecoveryType === 'FAST') {
-              const fastProgress = Math.min(1, recProgress * 3.0);
-              active = base * (dropMult + (1 - dropMult) * fastProgress);
-              telescope = active;
-              bgpVal = 50 + 49 * fastProgress;
-            } else {
-              // SLOW
-              active = base * (dropMult + (1 - dropMult) * recProgress);
-              telescope = base * (dropMult + (1 - dropMult) * recProgress * 0.95);
-              bgpVal = 50 + 49 * recProgress;
-            }
-          }
-        }
-
-        ap.push([ts, Math.round(active * 10) / 10]);
-        darknet.push([ts, Math.round(telescope * 10) / 10]);
-        bgp.push([ts, Math.round(bgpVal * 10) / 10]);
-      }
-
-      return {
-        entityId: entity.id,
-        entityName: entity.name,
-        signals: {
-          activeProbing: ap,
-          darknetTelescope: darknet,
-          bgpPrefixes: bgp,
+    // El modal es un adaptador delgado: traduce los sliders a un perfil
+    // declarativo para la fábrica de telemetría sintética.
+    const profile: ScenarioProfile = {
+      perturbations: [
+        {
+          kind: 'drop',
+          stateIds: genTargetStates,
+          from: onsetIndex,
+          to: recoveryStartIndex,
+          active: dropMult,
+          darknet: dropMult * 0.9,
+          bgp: 50 + dropMult * 40,
+          recovery:
+            genRecoveryType === 'NONE'
+              ? undefined
+              : {
+                  from: recoveryStartIndex,
+                  type: genRecoveryType === 'FAST' ? 'FAST' : 'SLOW',
+                  darknetFactor: genRecoveryType === 'FAST' ? 1.0 : 0.95,
+                  bgpFloor: 50 + dropMult * 40,
+                  bgpTarget: 99,
+                },
         },
-      };
-    });
+      ],
+    };
+
+    const datasets = generateScenario(profile);
 
     onApplyDataset(
       datasets,

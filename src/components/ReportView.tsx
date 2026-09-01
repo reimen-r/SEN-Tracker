@@ -14,6 +14,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { downloadCsv, downloadJson } from '../utils/export';
+import { renderBroadcastText } from '../services/proseRenderer';
 
 interface ReportViewProps {
   report: OutageReport;
@@ -30,9 +31,9 @@ export const ReportView: React.FC<ReportViewProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [severityFilter, setSeverityFilter] = useState<string>('ALL');
-  const [generatedAt] = useState<Date>(() => new Date());
 
   const { executiveSummary, stateClassifications, recoveryAnalysis, alertRecommendation } = report;
+  const reportDate = new Date(report.timestampAnalyzed).toISOString().slice(0, 10);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -51,7 +52,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
   };
 
   const handleExportJson = () => {
-    downloadJson(`reporte_SEN_IODA_${generatedAt.toISOString().slice(0, 10)}.json`, report);
+    downloadJson(`reporte_SEN_IODA_${reportDate}.json`, report);
   };
 
   const handleExportSummaryCsv = () => {
@@ -66,7 +67,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
         s.recoveryType,
       ]),
     ];
-    downloadCsv(`resumen_estados_SEN_${generatedAt.toISOString().slice(0, 10)}.csv`, rows);
+    downloadCsv(`resumen_estados_SEN_${reportDate}.csv`, rows);
   };
 
   const filteredStates = stateClassifications.filter((st) => {
@@ -83,30 +84,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
     return matchesSearch && matchesSeverity;
   });
 
-  // Generate Telegram / WhatsApp Community broadcast format
-  const telegramBroadcastText = `🚨 *REPORTE DE MONITOREO SEN - VENEZUELA (TELEMETRÍA IODA)* ⚡
-📅 Fecha: ${generatedAt.toLocaleDateString('es-VE')} | ⏰ Inicio: ${executiveSummary.estimatedOnsetVET}
-
-📊 *RESUMEN EJECUTIVO:*
-• Situación: ${executiveSummary.generalStatus}
-• Estados con Afectación: ${executiveSummary.affectedStatesCount} de ${executiveSummary.totalStatesAnalyzed}
-• Colapsos Generales (>80%): ${executiveSummary.generalBlackoutStatesCount}
-• Eventos Críticos (51-80%): ${executiveSummary.criticalStatesCount}
-
-📍 *ESTADOS MÁS COMPROMETIDOS:*
-${stateClassifications
-  .filter((s) => s.severity !== 'NORMALIDAD')
-  .slice(0, 10)
-  .map((s) => `• *${s.entity.name}*: -${s.dropPercentage}% (${s.severity.replace('_', ' ')})`)
-  .join('\n') || '• No se registran caídas críticas en las entidades evaluadas.'}
-
-🔄 *ANÁLISIS DE RESTITUCIÓN:*
-${recoveryAnalysis.recoverySpeedSummary}
-
-📢 *ALERTA / RECOMENDACIÓN COMUNITARIA:*
-${alertRecommendation}
-
-_Fuente: Algoritmo de Inferencia IODA Georgia Tech / Monitoreo de Redes del SEN_`;
+  // Formato Telegram / WhatsApp producido por el mismo renderer que el markdown.
+  const telegramBroadcastText = renderBroadcastText(report);
 
   return (
     <div className="flex flex-col h-full bg-[#161b22] border border-slate-700/50 rounded overflow-hidden shadow-lg">

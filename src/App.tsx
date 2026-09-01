@@ -1,8 +1,15 @@
 import { useState, useMemo, useCallback, lazy, Suspense, useEffect, useRef } from 'react';
-import { IodaStateDataset, OutageReport, OutageSeverity } from './types';
-import { INCIDENT_PRESETS, VENEZUELA_ENTITIES } from './data/venezuelaGrid';
+import { IodaStateDataset, OutageReport } from './types';
+import { INCIDENT_PRESETS } from './data/venezuelaGrid';
+import { VENEZUELA_ENTITIES } from './data/entityRegistry';
 import { analyzeIodaDatasets } from './services/analyzer';
 import { fetchIodaSignals } from './services/iodaApi';
+import {
+  detectEscalations,
+  fetchNationalTelemetry,
+  seedSeverityMap,
+  SeverityMap,
+} from './services/vigilance';
 import { loadPersistedState, savePersistedState } from './utils/storage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Header } from './components/Header';
@@ -18,13 +25,6 @@ const DataIngestionModal = lazy(() =>
 const GeminiAnalystModal = lazy(() =>
   import('./components/GeminiAnalystModal').then((m) => ({ default: m.GeminiAnalystModal }))
 );
-
-const SEVERITY_RANK: Record<OutageSeverity, number> = {
-  NORMALIDAD: 0,
-  MODERADO: 1,
-  CRITICO: 2,
-  APAGON_GENERAL: 3,
-};
 
 export default function App() {
   // Estado persistido de la sesión anterior (localStorage), si es válido.
@@ -60,7 +60,7 @@ export default function App() {
   const [watchMode, setWatchMode] = useState<boolean>(false);
   const [watchIntervalSec, setWatchIntervalSec] = useState<number>(300);
   const [watchAlert, setWatchAlert] = useState<string | null>(null);
-  const prevSeverityMap = useRef<Map<string, OutageSeverity>>(new Map());
+  const prevSeverityMap = useRef<SeverityMap>(new Map());
 
   const sendSystemNotification = useCallback((title: string, body: string) => {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -75,24 +75,8 @@ export default function App() {
     setIsLiveLoading(true);
     setLiveError(null);
     try {
-      // Concurrencia limitada a 6 estados por lote para no martillar el
-      // proxy ni el upstream de Georgia Tech (24 peticiones simultáneas).
-      const batchSize = 6;
-      const results: (IodaStateDataset | null)[] = [];
-      for (let i = 0; i < VENEZUELA_ENTITIES.length; i += batchSize) {
-        const batch = VENEZUELA_ENTITIES.slice(i, i + batchSize);
-        const batchResults = await Promise.all(
-          batch.map(async (entity) => {
-            try {
-              return await fetchIodaSignals(entity.id);
-            } catch {
-              return null;
-            }
-          })
-        );
-        results.push(...batchResults);
-      }
-      const datasets = results.filter((d): d is IodaStateDataset => d !== null);
+      // Concurrencia limitada a 6 estados por lote (ver fetchNationalTelemetry).
+      const datasets = await fetchNationalTelemetry(VENEZUELA_ENTITIES, fetchIodaSignals, 6);
       if (datasets.length === 0) {
         throw new Error('No se pudo obtener datos en vivo de IODA.');
       }
@@ -114,42 +98,26 @@ export default function App() {
     }
   }, [runLiveFetch]);
 
-  const detectEscalations = useCallback(
-    (datasets: IodaStateDataset[]) => {
-      const newReport = analyzeIodaDatasets(datasets);
-      const escalations: string[] = [];
-      for (const st of newReport.stateClassifications) {
-        const prev = prevSeverityMap.current.get(st.entity.id);
-        if (prev !== undefined && SEVERITY_RANK[st.severity] > SEVERITY_RANK[prev]) {
-          escalations.push(`${st.entity.name} → ${st.severity} (-${st.dropPercentage}%)`);
-        }
-      }
-      prevSeverityMap.current = new Map(
-        newReport.stateClassifications.map((s) => [s.entity.id, s.severity])
-      );
-      if (escalations.length > 0) {
-        const msg = `Nueva anomalía detectada: ${escalations.join(' · ')}`;
-        setWatchAlert(msg);
-        sendSystemNotification('⚠️ SEN — Alerta de Vigilancia', msg);
-      }
-    },
-    [sendSystemNotification]
-  );
-
   useEffect(() => {
     if (!watchMode) return;
     const id = setInterval(() => {
       void (async () => {
         const datasets = await runLiveFetch();
-        if (datasets) {
-          setCurrentDatasets(datasets);
-          setCurrentScenarioTitle('Telemetría en Vivo IODA (24h)');
-          detectEscalations(datasets);
+        if (!datasets) return;
+        setCurrentDatasets(datasets);
+        setCurrentScenarioTitle('Telemetría en Vivo IODA (24h)');
+        const report = analyzeIodaDatasets(datasets);
+        const { escalations, nextSeverityMap } = detectEscalations(prevSeverityMap.current, report);
+        prevSeverityMap.current = nextSeverityMap;
+        if (escalations.length > 0) {
+          const msg = `Nueva anomalía detectada: ${escalations.join(' · ')}`;
+          setWatchAlert(msg);
+          sendSystemNotification('⚠️ SEN — Alerta de Vigilancia', msg);
         }
       })();
     }, watchIntervalSec * 1000);
     return () => clearInterval(id);
-  }, [watchMode, watchIntervalSec, runLiveFetch, detectEscalations]);
+  }, [watchMode, watchIntervalSec, runLiveFetch, sendSystemNotification]);
 
   // Compute outage analysis
   const report: OutageReport = useMemo(() => {
@@ -168,9 +136,7 @@ export default function App() {
     const next = !watchMode;
     if (next) {
       // Seed con la severidad actual para no disparar falsa alarma en el primer poll
-      prevSeverityMap.current = new Map(
-        report.stateClassifications.map((s) => [s.entity.id, s.severity])
-      );
+      prevSeverityMap.current = seedSeverityMap(report);
       if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission().catch(() => undefined);
       }
