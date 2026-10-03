@@ -6,3 +6,15 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Tooling de agente: payload vendorizado de los skills (~6 MB de bundles
+# minificados). No es código de la app. Se reinstala con:
+#   npx skills add <owner>/<repo> --skill <name>
+.agents/
+.claude/
+skills-lock.json
+
+# Artefactos de revisión visual: capturas transitorias, no fuentes.
+# El espejo legible por máquina del sistema de diseño sí se versiona
+# (.impeccable/design.json).
+.impeccable/review/

@@ -17,6 +17,8 @@ import { VenezuelaMap } from './components/VenezuelaMap';
 import { TelemetryChart } from './components/TelemetryChart';
 import { ReportView } from './components/ReportView';
 import { MethodologyBanner } from './components/MethodologyBanner';
+import { SeverityDistribution } from './components/SeverityDistribution';
+import { Radar, TriangleAlert, X } from 'lucide-react';
 
 // Lazy-load modals to keep the initial bundle small
 const DataIngestionModal = lazy(() =>
@@ -112,7 +114,7 @@ export default function App() {
         if (escalations.length > 0) {
           const msg = `Nueva anomalía detectada: ${escalations.join(' · ')}`;
           setWatchAlert(msg);
-          sendSystemNotification('⚠️ SEN — Alerta de Vigilancia', msg);
+          sendSystemNotification('SEN — Alerta de Vigilancia', msg);
         }
       })();
     }, watchIntervalSec * 1000);
@@ -170,7 +172,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0c0e12] text-slate-200 antialiased font-sans">
+    <div className="min-h-screen flex flex-col bg-canvas text-fg antialiased font-sans">
       {/* Top Operations Header */}
       <Header
         report={report}
@@ -192,28 +194,38 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 space-y-4">
         {/* Live Data Error Banner */}
         {liveError && (
-          <div className="no-print flex items-center justify-between gap-3 px-4 py-2.5 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-300 font-mono">
-            <span>⚠️ {liveError}</span>
+          <div
+            role="alert"
+            className="no-print flex items-center gap-3 px-4 py-3 rounded-control bg-sev-blackout-surface border border-sev-blackout text-body"
+          >
+            <TriangleAlert className="w-4 h-4 shrink-0 text-sev-blackout" aria-hidden="true" />
+            <span className="text-sev-blackout flex-1 min-w-0">{liveError}</span>
             <button
               type="button"
               onClick={() => setLiveError(null)}
-              className="text-slate-400 hover:text-white transition-colors"
+              aria-label="Descartar aviso de error"
+              className="shrink-0 rounded-control p-2 -m-1 text-fg-muted hover:text-fg hover:bg-canvas transition-colors"
             >
-              ✕
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         )}
 
         {/* Vigilancia Alert Banner */}
         {watchAlert && (
-          <div className="no-print flex items-center justify-between gap-3 px-4 py-2.5 rounded bg-amber-500/10 border border-amber-500/40 text-xs text-amber-200 font-mono">
-            <span>🛰️ {watchAlert}</span>
+          <div
+            role="status"
+            className="no-print flex items-center gap-3 px-4 py-3 rounded-control bg-sev-moderate-surface border border-sev-moderate text-body"
+          >
+            <Radar className="w-4 h-4 shrink-0 text-sev-moderate" aria-hidden="true" />
+            <span className="text-sev-moderate flex-1 min-w-0">{watchAlert}</span>
             <button
               type="button"
               onClick={() => setWatchAlert(null)}
-              className="text-slate-400 hover:text-white transition-colors"
+              aria-label="Descartar alerta de vigilancia"
+              className="shrink-0 rounded-control p-2 -m-1 text-fg-muted hover:text-fg hover:bg-canvas transition-colors"
             >
-              ✕
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         )}
@@ -223,64 +235,15 @@ export default function App() {
           <MethodologyBanner />
         </div>
 
-        {/* Global KPI Summary Strip in Sleek Theme */}
-        <div className="no-print grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-          <div className="bg-[#161b22] p-3.5 border border-slate-700/50 rounded flex flex-col justify-between">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-mono mb-1">
-              Estados Afectados
-            </p>
-            <p className="text-3xl font-bold text-white font-mono">
-              {report.executiveSummary.affectedStatesCount}{' '}
-              <span className="text-sm font-normal text-slate-500">/ 24</span>
-            </p>
-          </div>
-
-          <div className="bg-[#161b22] p-3.5 border border-slate-700/50 rounded flex flex-col justify-between">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-mono mb-1">
-              Apagón General (&gt;80%)
-            </p>
-            <p className="text-3xl font-bold text-red-500 font-mono">
-              {report.executiveSummary.generalBlackoutStatesCount}
-            </p>
-          </div>
-
-          <div className="bg-[#161b22] p-3.5 border border-slate-700/50 rounded flex flex-col justify-between">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-mono mb-1">
-              Eventos Críticos (51-80%)
-            </p>
-            <p className="text-3xl font-bold text-orange-400 font-mono">
-              {report.executiveSummary.criticalStatesCount}
-            </p>
-          </div>
-
-          <div className="bg-[#161b22] p-3.5 border border-slate-700/50 rounded flex flex-col justify-between">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-mono mb-1">
-              Falla Detectada
-            </p>
-            <p className="text-2xl font-bold text-blue-400 font-mono">
-              {report.executiveSummary.estimatedOnsetVET}{' '}
-              <span className="text-xs font-normal text-slate-400">VET</span>
-            </p>
-          </div>
-
-          <div className="hidden lg:flex bg-[#161b22] p-3.5 border border-slate-700/50 rounded flex-col justify-between">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-mono mb-1">
-              Recuperación
-            </p>
-            <p className="text-base font-bold text-amber-400 font-mono truncate">
-              {report.recoveryAnalysis.recoveryType === 'SIN_RECUPERACION'
-                ? 'NULA / SIN RETORNO'
-                : report.recoveryAnalysis.recoveryType.replace('_', ' ')}
-            </p>
-          </div>
-        </div>
+        {/* Lectura nacional: la proporcion y los conteos en un solo objeto */}
+        <SeverityDistribution report={report} />
 
         {/* View Layouts */}
         {activeView === 'dashboard' ? (
           <div className="space-y-4">
             {/* Top Row: Map (Left) + Telemetry Time-Series Chart (Right) */}
             <div className="no-print grid grid-cols-1 lg:grid-cols-12 gap-4">
-              <div className="lg:col-span-6 h-[500px]">
+              <div className="lg:col-span-6 min-h-[520px]">
                 <ErrorBoundary>
                   <VenezuelaMap
                     stateResults={report.stateClassifications}
@@ -290,7 +253,7 @@ export default function App() {
                 </ErrorBoundary>
               </div>
 
-              <div className="lg:col-span-6 h-[500px]">
+              <div className="lg:col-span-6 min-h-[520px]">
                 <ErrorBoundary>
                   <TelemetryChart
                     selectedState={selectedStateResult}
@@ -313,8 +276,8 @@ export default function App() {
             </div>
           </div>
         ) : activeView === 'map' ? (
-          <div className="no-print grid grid-cols-1 lg:grid-cols-12 gap-4 h-[calc(100vh-230px)] min-h-[600px]">
-            <div className="lg:col-span-6 h-full">
+          <div className="no-print grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[600px]">
+            <div className="lg:col-span-6 min-h-[520px]">
               <ErrorBoundary>
                 <VenezuelaMap
                   stateResults={report.stateClassifications}
@@ -323,7 +286,7 @@ export default function App() {
                 />
               </ErrorBoundary>
             </div>
-            <div className="lg:col-span-6 h-full">
+            <div className="lg:col-span-6 min-h-[520px]">
               <ErrorBoundary>
                 <TelemetryChart
                   selectedState={selectedStateResult}
@@ -348,7 +311,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-8 border-t border-slate-800 bg-[#0c0e12] px-6 py-3 text-[10px] text-slate-500 font-mono">
+      <footer className="mt-8 border-t border-line bg-canvas px-6 py-3 text-label-sm text-fg-subtle font-mono">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <span>IODA DATASET SOURCE: GA-TECH / INTERNET OUTAGE DETECTION & ANALYSIS</span>
           <span>SISTEMA ELÉCTRICO NACIONAL DE VENEZUELA (SEN)</span>
@@ -360,8 +323,8 @@ export default function App() {
       <ErrorBoundary>
         <Suspense
           fallback={
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c0e12]/80 backdrop-blur-sm">
-              <div className="text-xs font-mono text-slate-400 animate-pulse">Cargando módulo...</div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 backdrop-blur-sm">
+              <div className="text-label font-mono text-fg-muted animate-pulse">Cargando módulo...</div>
             </div>
           }
         >
@@ -377,8 +340,8 @@ export default function App() {
       <ErrorBoundary>
         <Suspense
           fallback={
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c0e12]/80 backdrop-blur-sm">
-              <div className="text-xs font-mono text-slate-400 animate-pulse">Cargando analista IA...</div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 backdrop-blur-sm">
+              <div className="text-label font-mono text-fg-muted animate-pulse">Cargando analista IA...</div>
             </div>
           }
         >

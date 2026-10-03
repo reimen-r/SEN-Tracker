@@ -12,9 +12,17 @@ import {
   FileJson,
   FileSpreadsheet,
   Printer,
+  X,
 } from 'lucide-react';
 import { downloadCsv, downloadJson } from '../utils/export';
 import { renderBroadcastText } from '../services/proseRenderer';
+import { RecoveryNote } from './RecoveryNote';
+import {
+  SEVERITY_ORDER,
+  nationalAlertToken,
+  severityFromDrop,
+  severityToken,
+} from '../design/severity';
 
 interface ReportViewProps {
   report: OutageReport;
@@ -31,8 +39,13 @@ export const ReportView: React.FC<ReportViewProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [severityFilter, setSeverityFilter] = useState<string>('ALL');
+  const hasActiveFilter = searchFilter.trim() !== '' || severityFilter !== 'ALL';
 
   const { executiveSummary, stateClassifications, recoveryAnalysis, alertRecommendation } = report;
+  const alert = nationalAlertToken(
+    executiveSummary.affectedStatesCount,
+    executiveSummary.generalBlackoutStatesCount,
+  );
   const reportDate = new Date(report.timestampAnalyzed).toISOString().slice(0, 10);
 
   const handleCopy = (text: string) => {
@@ -88,18 +101,18 @@ export const ReportView: React.FC<ReportViewProps> = ({
   const telegramBroadcastText = renderBroadcastText(report);
 
   return (
-    <div className="flex flex-col h-full bg-[#161b22] border border-slate-700/50 rounded overflow-hidden shadow-lg">
+    <div className="flex flex-col h-full bg-surface border border-line rounded-card overflow-hidden shadow-raised">
       {/* Header with Tabs & Export Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-[#161b22] border-b border-slate-700/50">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-surface border-b border-line">
         <div className="flex items-center gap-3">
-          <div className="p-1.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-400">
+          <div className="p-1.5 rounded-control bg-sev-normal/20 border border-sev-normal text-sev-normal">
             <FileText className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
+            <h3 className="text-label font-bold text-fg uppercase font-mono tracking-wider flex items-center gap-2">
               Reporte Estructurado de Inferencia SEN
             </h3>
-            <p className="text-[11px] text-slate-400 font-mono">
+            <p className="text-label text-fg-muted font-mono">
               Evaluación metódica según umbrales de Active Probing y Darknet Telescope
             </p>
           </div>
@@ -107,37 +120,25 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
         <div className="flex items-center gap-2">
           {/* Tabs */}
-          <div className="flex p-0.5 bg-[#0c0e12] border border-slate-700/50 rounded text-xs font-mono">
+          <div className="flex p-0.5 bg-canvas border border-line rounded-control text-label font-mono">
             <button
               type="button"
               onClick={() => setActiveTab('structured')}
-              className={`px-3 py-1 rounded transition-all ${
-                activeTab === 'structured'
-                  ? 'bg-[#1c2128] text-white shadow-sm border border-slate-600/50'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+              className={`px-3 py-1 rounded-control transition-colors duration-150 ${ activeTab === 'structured' ? 'bg-surface-raised text-fg border border-line-strong' : 'text-fg-muted hover:text-fg' }`}
             >
               Vista Ejecutiva
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('markdown')}
-              className={`px-3 py-1 rounded transition-all ${
-                activeTab === 'markdown'
-                  ? 'bg-[#1c2128] text-white shadow-sm border border-slate-600/50'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+              className={`px-3 py-1 rounded-control transition-colors duration-150 ${ activeTab === 'markdown' ? 'bg-surface-raised text-fg border border-line-strong' : 'text-fg-muted hover:text-fg' }`}
             >
               Texto Markdown
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('broadcast')}
-              className={`px-3 py-1 rounded transition-all ${
-                activeTab === 'broadcast'
-                  ? 'bg-[#1c2128] text-white shadow-sm border border-slate-600/50'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+              className={`px-3 py-1 rounded-control transition-colors duration-150 ${ activeTab === 'broadcast' ? 'bg-surface-raised text-fg border border-line-strong' : 'text-fg-muted hover:text-fg' }`}
             >
               Alerta Comunitaria
             </button>
@@ -147,46 +148,46 @@ export const ReportView: React.FC<ReportViewProps> = ({
           <button
             type="button"
             onClick={() => handleCopy(activeTab === 'broadcast' ? telegramBroadcastText : report.markdownText)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#0c0e12] border border-slate-700/50 text-xs font-mono text-slate-300 hover:bg-[#1c2128] hover:border-slate-500 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-control bg-canvas border border-line text-label font-mono text-fg-muted hover:bg-surface-raised hover:border-line-strong transition-colors duration-150"
             title="Copiar contenido"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+            {copied ? <Check className="w-3.5 h-3.5 text-sev-normal" /> : <Copy className="w-3.5 h-3.5 text-fg-muted" />}
             {copied ? 'Copiado' : 'Copiar'}
           </button>
           <button
             type="button"
             onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#0c0e12] border border-slate-700/50 text-xs font-mono text-slate-300 hover:bg-[#1c2128] hover:border-slate-500 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-control bg-canvas border border-line text-label font-mono text-fg-muted hover:bg-surface-raised hover:border-line-strong transition-colors duration-150"
             title="Descargar Markdown"
           >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
+            <Download className="w-3.5 h-3.5 text-fg-muted" />
             Descargar
           </button>
           <button
             type="button"
             onClick={handleExportJson}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#0c0e12] border border-slate-700/50 text-xs font-mono text-slate-300 hover:bg-[#1c2128] hover:border-slate-500 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-control bg-canvas border border-line text-label font-mono text-fg-muted hover:bg-surface-raised hover:border-line-strong transition-colors duration-150"
             title="Descargar reporte completo en JSON"
           >
-            <FileJson className="w-3.5 h-3.5 text-slate-400" />
+            <FileJson className="w-3.5 h-3.5 text-fg-muted" />
             JSON
           </button>
           <button
             type="button"
             onClick={handleExportSummaryCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#0c0e12] border border-slate-700/50 text-xs font-mono text-slate-300 hover:bg-[#1c2128] hover:border-slate-500 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-control bg-canvas border border-line text-label font-mono text-fg-muted hover:bg-surface-raised hover:border-line-strong transition-colors duration-150"
             title="Descargar resumen por estado en CSV"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-sev-normal" />
             CSV
           </button>
           <button
             type="button"
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#0c0e12] border border-slate-700/50 text-xs font-mono text-slate-300 hover:bg-[#1c2128] hover:border-slate-500 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-control bg-canvas border border-line text-label font-mono text-fg-muted hover:bg-surface-raised hover:border-line-strong transition-colors duration-150"
             title="Imprimir o exportar a PDF (fondo claro)"
           >
-            <Printer className="w-3.5 h-3.5 text-slate-400" />
+            <Printer className="w-3.5 h-3.5 text-fg-muted" />
             Imprimir
           </button>
         </div>
@@ -197,167 +198,216 @@ export const ReportView: React.FC<ReportViewProps> = ({
         {activeTab === 'structured' ? (
           <>
             {/* 1. Resumen Ejecutivo */}
-            <div className="p-4 rounded bg-[#0c0e12] border border-slate-700/50 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="p-4 rounded-card bg-canvas border border-line space-y-3">
+              <div className="flex items-center justify-between border-b border-line pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="flex items-center justify-center w-5 h-5 rounded bg-blue-500/20 border border-blue-500/40 text-blue-400 font-mono text-xs font-bold">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-control bg-info-surface border border-info text-info font-mono text-label font-bold">
                     1
                   </span>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white font-mono">
+                  <h4 className="text-label font-bold uppercase tracking-wider text-fg font-mono">
                     Resumen Ejecutivo
                   </h4>
                 </div>
-                <span className="text-[11px] font-mono text-slate-400">
-                  Hora Inicio: <strong className="text-blue-400">{executiveSummary.estimatedOnsetVET} VET</strong>
+                <span className="text-label font-mono text-fg-muted">
+                  Hora Inicio: <strong className="text-info">{executiveSummary.estimatedOnsetVET}</strong>
                 </span>
               </div>
 
               {/* Status Banner */}
               <div
-                className={`p-3 rounded border text-xs font-mono ${
-                  executiveSummary.generalBlackoutStatesCount >= 5
-                    ? 'bg-red-500/10 border-red-500/30 text-red-300'
-                    : executiveSummary.affectedStatesCount >= 2
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                }`}
+                className={`p-3 rounded-card border text-label font-mono ${alert.surface} ${alert.border} ${alert.fg}`}
               >
                 <div className="font-bold text-sm mb-1 flex items-center gap-2 uppercase">
                   <Zap className="w-4 h-4" />
                   {executiveSummary.generalStatus}
                 </div>
-                <p className="text-slate-300 leading-relaxed font-sans">
+                <p className="text-fg-muted leading-relaxed font-sans">
                   {executiveSummary.primaryHypothesis}
                 </p>
               </div>
 
               {/* Key Metric Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                <div className="p-2.5 rounded bg-[#161b22] border border-slate-700/50">
-                  <div className="text-[10px] text-slate-400 uppercase font-mono">Estados Afectados</div>
-                  <div className="text-xl font-bold font-mono text-white">
-                    {executiveSummary.affectedStatesCount}{' '}
-                    <span className="text-xs font-normal text-slate-500">/ {executiveSummary.totalStatesAnalyzed}</span>
+              {/* Métricas en línea, no en tarjetas: la proporción ya la da
+                  el panel de distribución nacional de arriba, así que aquí
+                  solo hacen falta las cifras que aún no se han visto. */}
+              <dl className="flex flex-wrap items-baseline gap-x-6 gap-y-2 pt-1 font-mono">
+                {(
+                  [
+                    ['Afectados', `${executiveSummary.affectedStatesCount}/${executiveSummary.totalStatesAnalyzed}`, 'text-fg'],
+                    ['Apagón general', String(executiveSummary.generalBlackoutStatesCount), 'text-sev-blackout'],
+                    ['Críticos', String(executiveSummary.criticalStatesCount), 'text-sev-critical'],
+                    ['Caída media', `−${executiveSummary.nationalConnectivityDropPct}%`, 'text-sev-moderate'],
+                  ] as const
+                ).map(([label, value, tone]) => (
+                  <div key={label} className="flex items-baseline gap-2">
+                    <dt className="text-label-sm text-fg-subtle">{label}</dt>
+                    <dd className={`text-body font-semibold tabular-nums ${tone}`}>{value}</dd>
                   </div>
-                </div>
-                <div className="p-2.5 rounded bg-[#161b22] border border-slate-700/50">
-                  <div className="text-[10px] text-slate-400 uppercase font-mono">Apagones Totales (&gt;80%)</div>
-                  <div className="text-xl font-bold font-mono text-red-400">
-                    {executiveSummary.generalBlackoutStatesCount}
-                  </div>
-                </div>
-                <div className="p-2.5 rounded bg-[#161b22] border border-slate-700/50">
-                  <div className="text-[10px] text-slate-400 uppercase font-mono">Eventos Críticos (51-80%)</div>
-                  <div className="text-xl font-bold font-mono text-orange-400">
-                    {executiveSummary.criticalStatesCount}
-                  </div>
-                </div>
-                <div className="p-2.5 rounded bg-[#161b22] border border-slate-700/50">
-                  <div className="text-[10px] text-slate-400 uppercase font-mono">Caída Media Afectados</div>
-                  <div className="text-xl font-bold font-mono text-amber-400">
-                    -{executiveSummary.nationalConnectivityDropPct}%
-                  </div>
-                </div>
-              </div>
+                ))}
+              </dl>
             </div>
 
             {/* 2. Clasificación por Estado */}
-            <div className="p-4 rounded bg-[#0c0e12] border border-slate-700/50 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+            <div className="p-4 rounded-card bg-canvas border border-line space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="flex items-center justify-center w-5 h-5 rounded bg-blue-500/20 border border-blue-500/40 text-blue-400 font-mono text-xs font-bold">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-control bg-info-surface border border-info text-info font-mono text-label font-bold">
                     2
                   </span>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white font-mono">
+                  <h4 className="text-label font-bold uppercase tracking-wider text-fg font-mono">
                     Clasificación por Estado
                   </h4>
                 </div>
 
-                {/* Filter and Search */}
-                <div className="flex items-center gap-2 text-xs font-mono">
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Buscar estado..."
-                      value={searchFilter}
-                      onChange={(e) => setSearchFilter(e.target.value)}
-                      className="bg-[#161b22] border border-slate-700/50 rounded pl-8 pr-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                    />
+                {/* Filtro y búsqueda. Ambos controles llevan etiqueta
+                    visible: un placeholder no es una etiqueta, y un
+                    selector sin nombre no lo anuncia un lector de pantalla. */}
+                <div className="flex items-end gap-3 text-label font-mono flex-wrap">
+                  <div className="flex flex-col gap-1">
+                    <label
+                      htmlFor="state-search"
+                      className="text-label-sm text-fg-subtle uppercase tracking-wider"
+                    >
+                      Buscar estado
+                    </label>
+                    <div className="relative">
+                      <Search
+                        className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted"
+                        aria-hidden="true"
+                      />
+                      <input
+                        id="state-search"
+                        type="search"
+                        placeholder="Nombre, código o interpretación"
+                        value={searchFilter}
+                        onChange={(e) => setSearchFilter(e.target.value)}
+                        className="bg-surface border border-line rounded-control pl-8 pr-2.5 py-1.5 text-label text-fg placeholder:text-fg-subtle"
+                      />
+                    </div>
                   </div>
-                  <select
-                    value={severityFilter}
-                    onChange={(e) => setSeverityFilter(e.target.value)}
-                    className="bg-[#161b22] border border-slate-700/50 rounded px-2.5 py-1 text-xs text-slate-300 focus:outline-none"
-                  >
-                    <option value="ALL">Todos los estados</option>
-                    <option value="AFFECTED">Solo afectados (≥25%)</option>
-                    <option value="APAGON_GENERAL">Apagón General (&gt;80%)</option>
-                    <option value="CRITICO">Crítico (51%-80%)</option>
-                    <option value="MODERADO">Moderado (25%-50%)</option>
-                    <option value="NORMALIDAD">Normalidad</option>
-                  </select>
+                  <div className="flex flex-col gap-1">
+                    <label
+                      htmlFor="severity-filter"
+                      className="text-label-sm text-fg-subtle uppercase tracking-wider"
+                    >
+                      Severidad
+                    </label>
+                    <select
+                      id="severity-filter"
+                      value={severityFilter}
+                      onChange={(e) => setSeverityFilter(e.target.value)}
+                      className="bg-surface border border-line rounded-control px-2.5 py-1.5 text-label text-fg-muted"
+                    >
+                      <option value="ALL">Todos los estados</option>
+                      <option value="AFFECTED">Solo afectados (≥25%)</option>
+                      {SEVERITY_ORDER.map((sev) => (
+                        <option key={sev} value={sev}>
+                          {severityToken(sev).labelWithThreshold}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {hasActiveFilter && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchFilter('');
+                        setSeverityFilter('ALL');
+                      }}
+                      className="flex items-center gap-1.5 rounded-control border border-line bg-canvas px-2.5 py-1.5 text-label text-fg-muted hover:bg-surface-raised hover:text-fg transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" aria-hidden="true" />
+                      Limpiar
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* State Table */}
+              {/* Tabla de clasificación. Cada fila es operable: antes sólo tenía
+                  onClick, así que un operador de teclado no podía seleccionar
+                  un estado desde el reporte. El botón real de la primera
+                  celda da el nombre accesible y el foco; la fila entera
+                  amplía el área sensible sin duplicar el control. */}
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-label border-collapse">
+                  <caption className="sr-only">
+                    Clasificación de severidad por estado, con caída porcentual,
+                    interpretación técnica y tipo de reconexión. Seleccione una
+                    fila para ver su telemetría.
+                  </caption>
                   <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 font-mono uppercase text-[10px]">
-                      <th className="py-2.5 px-3">Estado / Entidad</th>
-                      <th className="py-2.5 px-3">Caída %</th>
-                      <th className="py-2.5 px-3">Nivel de Severidad</th>
-                      <th className="py-2.5 px-3">Interpretación Técnica SEN</th>
-                      <th className="py-2.5 px-3">Reconexión</th>
+                    <tr className="border-b border-line text-fg-muted font-mono uppercase text-label-sm">
+                      <th scope="col" className="py-2.5 px-3">Estado / Entidad</th>
+                      <th scope="col" className="py-2.5 px-3 text-right">Caída %</th>
+                      <th scope="col" className="py-2.5 px-3">Nivel de Severidad</th>
+                      <th scope="col" className="py-2.5 px-3">Interpretación Técnica SEN</th>
+                      <th scope="col" className="py-2.5 px-3">Reconexión</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/50 font-sans">
+                  <tbody className="divide-y divide-line">
+                    {filteredStates.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-10 px-3 text-center">
+                          <p className="text-body text-fg font-medium">
+                            Ningún estado coincide con el filtro
+                          </p>
+                          <p className="text-label text-fg-muted mt-1">
+                            {hasActiveFilter
+                              ? 'Prueba con otro nombre o vuelve a Todos los estados.'
+                              : 'No hay telemetría para los estados seleccionados.'}
+                          </p>
+                          {hasActiveFilter && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearchFilter('');
+                                setSeverityFilter('ALL');
+                              }}
+                              className="mt-3 inline-flex items-center gap-1.5 rounded-control border border-line bg-canvas px-3 py-2 text-label text-fg-muted hover:bg-surface-raised hover:text-fg transition-colors duration-150"
+                            >
+                              <X className="w-3.5 h-3.5" aria-hidden="true" />
+                              Limpiar filtro
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )}
                     {filteredStates.map((st) => {
                       const isSelected = selectedStateId === st.entity.id;
                       return (
                         <tr
                           key={st.entity.id}
                           onClick={() => onSelectState(st.entity.id)}
-                          className={`cursor-pointer transition-colors ${
-                            isSelected
-                              ? 'bg-[#1c2128] text-white font-medium'
-                              : 'hover:bg-[#161b22] text-slate-300'
-                          }`}
+                          aria-selected={isSelected}
+                          className={`transition-colors ${ isSelected ? 'bg-surface-raised text-fg' : 'hover:bg-surface text-fg-muted cursor-pointer' }`}
                         >
-                          <td className="py-2.5 px-3 font-medium flex items-center gap-1.5">
-                            <span className="font-mono text-blue-400 font-bold">[{st.entity.code}]</span>
-                            <span>{st.entity.name}</span>
-                          </td>
-                          <td className="py-2.5 px-3 font-mono font-bold">
-                            <span
-                              className={
-                                st.dropPercentage >= 80
-                                  ? 'text-red-400'
-                                  : st.dropPercentage >= 51
-                                  ? 'text-orange-400'
-                                  : st.dropPercentage >= 25
-                                  ? 'text-amber-400'
-                                  : 'text-emerald-400'
-                              }
+                          <td className="py-2.5 px-3 font-medium">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectState(st.entity.id);
+                              }}
+                              aria-pressed={isSelected}
+                              className="flex items-center gap-1.5 text-left rounded-control px-1 -mx-1 hover:text-fg transition-colors"
                             >
-                              -{st.dropPercentage}%
+                              <span className="font-mono text-info font-bold">
+                                [{st.entity.code}]
+                              </span>
+                              <span>{st.entity.name}</span>
+                            </button>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-right tabular-nums">
+                            <span className={severityToken(severityFromDrop(st.dropPercentage)).fg}>
+                              −{st.dropPercentage}%
                             </span>
                           </td>
                           <td className="py-2.5 px-3"><SeverityBadge severity={st.severity} /></td>
-                          <td className="py-2.5 px-3 text-slate-300 leading-snug max-w-md">
+                          <td className="py-2.5 px-3 text-fg-muted leading-snug max-w-md">
                             {st.interpretation}
                           </td>
-                          <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400">
-                            {st.recoveryType === 'REBOTE_RAPIDO' ? (
-                              <span className="text-emerald-400 font-semibold">Rebote Rápido</span>
-                            ) : st.recoveryType === 'RECUPERACION_LENTA_ESCALONADA' ? (
-                              <span className="text-amber-400 font-semibold">Lenta Escalonada</span>
-                            ) : st.recoveryType === 'EN_CURSO' ? (
-                              <span className="text-blue-400">En Curso</span>
-                            ) : (
-                              <span className="text-slate-500">Sin retorno</span>
-                            )}
+                          <td className="py-2.5 px-3 text-label-sm">
+                            <RecoveryNote recoveryType={st.recoveryType} variant="inline" />
                           </td>
                         </tr>
                       );
@@ -368,38 +418,38 @@ export const ReportView: React.FC<ReportViewProps> = ({
             </div>
 
             {/* 3. Análisis de Recuperación */}
-            <div className="p-4 rounded bg-[#0c0e12] border border-slate-700/50 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="p-4 rounded-card bg-canvas border border-line space-y-3">
+              <div className="flex items-center justify-between border-b border-line pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="flex items-center justify-center w-5 h-5 rounded bg-blue-500/20 border border-blue-500/40 text-blue-400 font-mono text-xs font-bold">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-control bg-info-surface border border-info text-info font-mono text-label font-bold">
                     3
                   </span>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white font-mono">
+                  <h4 className="text-label font-bold uppercase tracking-wider text-fg font-mono">
                     Análisis de Recuperación
                   </h4>
                 </div>
-                <span className="text-[11px] font-mono text-slate-400">
-                  Tipo: <strong className="text-amber-400">{recoveryAnalysis.recoveryType}</strong>
+                <span className="text-label font-mono text-fg-muted">
+                  Tipo: <strong className="text-sev-moderate">{recoveryAnalysis.recoveryType}</strong>
                 </span>
               </div>
 
-              <div className="space-y-2 text-xs">
-                <div className="p-3 rounded bg-[#161b22] border border-slate-700/50 space-y-1">
-                  <div className="font-semibold text-white flex items-center gap-2 font-mono text-[11px] uppercase">
-                    <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
+              <div className="space-y-2 text-label">
+                <div className="p-3 rounded-card bg-surface border border-line space-y-1">
+                  <div className="font-semibold text-fg flex items-center gap-2 font-mono text-label uppercase">
+                    <RefreshCw className="w-3.5 h-3.5 text-info" />
                     Velocidad de Reconexión:
                   </div>
-                  <p className="text-slate-300 leading-relaxed font-sans">
+                  <p className="text-fg-muted leading-relaxed font-sans">
                     {recoveryAnalysis.recoverySpeedSummary}
                   </p>
                 </div>
 
-                <div className="p-3 rounded bg-[#161b22] border border-slate-700/50 space-y-1">
-                  <div className="font-semibold text-white flex items-center gap-2 font-mono text-[11px] uppercase">
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <div className="p-3 rounded-card bg-surface border border-line space-y-1">
+                  <div className="font-semibold text-fg flex items-center gap-2 font-mono text-label uppercase">
+                    <Zap className="w-3.5 h-3.5 text-sev-moderate" />
                     Evaluación de Dinámica de Red SEN:
                   </div>
-                  <p className="text-slate-300 leading-relaxed font-sans">
+                  <p className="text-fg-muted leading-relaxed font-sans">
                     {recoveryAnalysis.technicalInterpretation}
                   </p>
                 </div>
@@ -407,19 +457,19 @@ export const ReportView: React.FC<ReportViewProps> = ({
             </div>
 
             {/* 4. Alerta / Recomendación */}
-            <div className="p-4 rounded bg-[#0c0e12] border border-slate-700/50 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="p-4 rounded-card bg-canvas border border-line space-y-3">
+              <div className="flex items-center justify-between border-b border-line pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="flex items-center justify-center w-5 h-5 rounded bg-blue-500/20 border border-blue-500/40 text-blue-400 font-mono text-xs font-bold">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-control bg-info-surface border border-info text-info font-mono text-label font-bold">
                     4
                   </span>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white font-mono">
+                  <h4 className="text-label font-bold uppercase tracking-wider text-fg font-mono">
                     Alerta / Recomendación Comunitaria
                   </h4>
                 </div>
               </div>
 
-              <div className="p-3 rounded bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 leading-relaxed font-sans">
+              <div className="p-3 rounded-card bg-sev-moderate-surface border border-sev-moderate text-label text-sev-moderate leading-relaxed font-sans">
                 {alertRecommendation}
               </div>
             </div>
@@ -427,28 +477,28 @@ export const ReportView: React.FC<ReportViewProps> = ({
         ) : activeTab === 'markdown' ? (
           /* Raw Markdown Output */
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+            <div className="flex items-center justify-between text-label text-fg-muted font-mono">
               <span>Texto estructurado según formato de inferencia SEN-IODA:</span>
-              <span className="text-blue-400">FORMATO ESTÁNDAR</span>
+              <span className="text-info">FORMATO ESTÁNDAR</span>
             </div>
-            <pre className="p-4 rounded bg-[#0c0e12] border border-slate-700/50 text-slate-200 font-mono text-xs leading-relaxed whitespace-pre-wrap select-all overflow-x-auto">
+            <pre className="p-4 rounded-card bg-canvas border border-line text-fg font-mono text-label leading-relaxed whitespace-pre-wrap select-all overflow-x-auto">
               {report.markdownText}
             </pre>
           </div>
         ) : (
           /* Broadcast View */
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+            <div className="flex items-center justify-between text-label text-fg-muted font-mono">
               <span>Mensaje para Telegram / WhatsApp:</span>
               <button
                 type="button"
                 onClick={() => handleCopy(telegramBroadcastText)}
-                className="text-blue-400 hover:text-blue-300 flex items-center gap-1 font-mono"
+                className="text-info hover:text-info flex items-center gap-1 font-mono"
               >
                 <Copy className="w-3.5 h-3.5" /> Copiar Mensaje
               </button>
             </div>
-            <pre className="p-4 rounded bg-[#0c0e12] border border-slate-700/50 text-slate-200 font-mono text-xs leading-relaxed whitespace-pre-wrap select-all overflow-x-auto">
+            <pre className="p-4 rounded-card bg-canvas border border-line text-fg font-mono text-label leading-relaxed whitespace-pre-wrap select-all overflow-x-auto">
               {telegramBroadcastText}
             </pre>
           </div>

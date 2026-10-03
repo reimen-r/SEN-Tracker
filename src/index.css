@@ -1,44 +1,241 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   TOKENS
+   Un solo lugar para color, tipo, radio, elevación y movimiento.
+   Todo lo que se ve sale de aquí. Los tres colores de superficie originales
+   (#0c0e12 / #161b22 / #1c2128) se conservan como anclas: esta capa les da
+   escala y semántica, no les cambia el carácter.
+   ========================================================================== */
+@theme {
+  /* --- Tipografía -------------------------------------------------------
+     Fira Sans (cuerpo) + Fira Code (datos) son una sola familia diseñada
+     paraTogether: el mono se lee como pariente, no como pegado.
+     Chakra Petch sigue siendo la voz de display del incumbent. */
+  --font-sans: "Fira Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "Fira Code", ui-monospace, "SF Mono", monospace;
+  --font-display: "Chakra Petch", "Fira Sans", sans-serif;
+
+  /* Escala de texto. Piso en 12px: no existe 10 ni 11. */
+  --text-label: 12px;
+  --text-label-sm: 12px;
+  --text-body: 14px;
+  --text-metric: 30px;
+
+  /* --- Superficies ------------------------------------------------------ */
+  --color-canvas: #0c0e12;
+  --color-surface: #161b22;
+  --color-surface-raised: #1c2128;
+
+  /* --- Bordes -----------------------------------------------------------
+     Valores sólidos equivalentes al slate-700/50 que el proyecto usaba
+     en todas partes. Sólidos para que no se apilen alfas. */
+  --color-line: #242e3b;
+  --color-line-strong: #364152;
+
+  /* --- Rampa de texto ---------------------------------------------------
+     Todos ≥ 4.5:1 sobre las tres superficies. El antiguo slate-500
+     (#64748b) daba 3.63:1 sobre surface y queda reemplazado por
+     --color-fg-subtle (5.69:1). */
+  --color-fg: #e6edf3;
+  --color-fg-muted: #9fb0c0;
+  --color-fg-subtle: #8496a8;
+
+  /* --- Severidad: fuente única de verdad --------------------------------
+     El matiz del incumbent pasa AA en las tres superficies. Lo que cambia
+     es que ahora hay un solo lugar donde vive, en vez de tres. */
+  --color-sev-blackout: #f87171;
+  --color-sev-critical: #fb923c;
+  --color-sev-moderate: #fbbf24;
+  --color-sev-normal: #34d399;
+  --color-info: #60a5fa;
+
+  /* Tintes sólidos de chip (14% del shade -600 sobre --color-surface),
+     para que el texto de severidad no dependa de alpha apilado. */
+  --color-sev-blackout-surface: #311c22;
+  --color-sev-critical-surface: #33231e;
+  --color-sev-moderate-surface: #31271e;
+  --color-sev-normal-surface: #132c2b;
+  --color-info-surface: #18253e;
+
+
+  /* Los rellenos del mapa viven en `src/design/severity.ts` (`mapFill`),
+     no aquí: son datos de un dominio que ya tiene su propia fuente de
+     verdad, y duplicarlos en dos sitios es la forma habitual de que se
+     contradigan. */
+
+  /* Topología del SEN: nivel de tensión de los corredores.
+     Segundo eje semántico, ortogonal a la severidad. Antes cada corredor
+     tenía un tono arbitrario — dos líneas de 400 kV eran distintas — así
+     que el color no significaba nada. Ahora el tonocodifica el voltaje y
+     el grosor lo confirma. */
+  --color-grid-765: #ef4444;
+  --color-grid-400: #f97316;
+  --color-grid-230: #eab308;
+
+  /* Tipo de nodo de generación. */
+  --color-node-hydro: #0284c7;
+  --color-node-substation: #e11d48;
+  --color-node-thermal: #ca8a04;
+
+  /* Series de telemetría: familia fría, para no competir con la severidad.
+     Antes la serie BGP usaba el mismo verde que "normalidad" y la compuesta
+     el mismo ámbar que "moderado", así que una curva podía leerse como un
+     umbral. Ahora los tonos cálidos quedan reservados para los umbrales:
+     el índice compuesto es el héroe (casi blanco) y la comparación se
+     atenúa para cederle el ojo. */
+  --color-series-probing: #38bdf8;
+  --color-series-darknet: #a78bfa;
+  --color-series-bgp: #22d3ee;
+  --color-series-composite: #e6edf3;
+  --color-series-compare: #8496a8;
+
+  /* Cromo de ejes y guías. */
+  --color-axis: #8496a8;
+  --color-axis-rule: #0c0e12;
+
+  /* Acciones de la aplicación — NO son severidad.
+     Los botones primarios usaban los tonos de la rampa de severidad, lo que
+     hacía que "Datos en Vivo" se leyera como "estado normal" y "Analista IA"
+     como "estado crítico". Un control y un estado son ejes distintos: la
+     acción tiene su propia voz. */
+  --color-action-primary: #2b5fd9;
+  --color-action-primary-hover: #3a6fe8;
+  --color-action-primary-ink: #f4f7ff;
+  --color-action-live: #22c55e;
+  --color-action-live-hover: #34d668;
+  --color-action-live-ink: #03240f;
+
+  /* --- Radios ----------------------------------------------------------- */
+  --radius-control: 8px;
+  --radius-card: 14px;
+
+  /* --- Elevación --------------------------------------------------------
+     Offset + blur. Los halos de color sin offset que tenía el incumbent
+     (shadow-sm shadow-red-500) eran decoración, no profundidad. */
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px -2px rgb(0 0 0 / 0.45);
+  --shadow-overlay: 0 2px 6px -2px rgb(0 0 0 / 0.5), 0 12px 32px -8px rgb(0 0 0 / 0.65);
+
+}
+
 @layer base {
+  html {
+    /* El header es sticky: sin esto, el foco por teclado queda debajo. */
+    scroll-padding-top: 5.5rem;
+  }
+
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.5;
+    color: var(--color-fg);
+    background-color: var(--color-canvas);
+    caret-color: var(--color-sev-critical);
   }
 
-  code, pre, .font-mono {
-    font-family: 'JetBrains Mono', monospace;
+  /* Foco visible y consistente en todo control operable. El proyecto
+     tenía cero focus-visible y 5× outline-none + ring-1 (1px, por debajo
+     del mínimo). Ahora: 2px + offset, sin quitar el outline del navegador
+     sin sustituto. */
+  :focus-visible {
+    outline: 2px solid var(--color-info);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
-  .font-display {
-    font-family: 'Chakra Petch', sans-serif;
+  /* Las cifras deben alinearse en columna. */
+  table,
+  time,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-sev-blackout) 32%, transparent);
+    color: var(--color-fg);
+  }
+
+  /* Controles nativos teñidos desde el palette. */
+  select,
+  input,
+  textarea,
+  button {
+    accent-color: var(--color-info);
+  }
+
+  /* Los números dentro de inputs y selects nativos también. */
+  input[type="number"] {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-/* Custom telemetry scrollbar */
+/* --- Scrollbar: teñido desde el palette, no desde rgba sueltos --------- */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--color-canvas);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
-  border-radius: 3px;
+  background: var(--color-line-strong);
+  border: 2px solid var(--color-canvas);
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 1);
+  background: var(--color-fg-subtle);
 }
 
-/* --- Print: solo el reporte, fondo claro, sin controles --- */
+/* --- Movimiento reducido: sin animación, sin que el estado final cambie --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- Impresión ----------------------------------------------------------
+   Reescrito contra custom properties. La versión anterior seleccionaba las
+   clases arbitrarias literales (main .bg-\[\#0c0e12\]), así que tokenizar
+   los colores la habría roto en silencio: el botón Imprimir habría
+   exportado tarjetas oscuras a papel. Ahora sigue a los tokens. */
 @media print {
   @page {
     margin: 12mm;
   }
 
+  :root {
+    --color-canvas: #ffffff;
+    --color-surface: #f8fafc;
+    --color-surface-raised: #f1f5f9;
+    --color-line: #cbd5e1;
+    --color-line-strong: #94a3b8;
+    --color-fg: #1e293b;
+    --color-fg-muted: #475569;
+    --color-fg-subtle: #64748b;
+    /* Los tonos de severidad se oscurecen para tinta. */
+    --color-sev-blackout: #b91c1c;
+    --color-sev-critical: #c2410c;
+    --color-sev-moderate: #a16207;
+    --color-sev-normal: #047857;
+    --color-info: #1d4ed8;
+    --color-sev-blackout-surface: #fef2f2;
+    --color-sev-critical-surface: #fff7ed;
+    --color-sev-moderate-surface: #fffbeb;
+    --color-sev-normal-surface: #ecfdf5;
+    --color-info-surface: #eff6ff;
+    --shadow-raised: none;
+    --shadow-overlay: none;
+  }
+
   html,
   body {
     background: #ffffff !important;
+    color: #1e293b !important;
   }
 
   header,
@@ -47,40 +244,9 @@
     display: none !important;
   }
 
-  button,
-  select,
-  input,
-  textarea {
-    display: none !important;
-  }
-
   main {
     max-width: 100% !important;
     padding: 0 !important;
-  }
-
-  /* Neutraliza las tarjetas oscuras del reporte para tinta/PDF */
-  main .bg-\[\#0c0e12\],
-  main .bg-\[\#161b22\],
-  main .bg-\[\#1c2128\] {
-    background-color: #f8fafc !important;
-    border-color: #cbd5e1 !important;
-  }
-
-  main .text-white,
-  main .text-slate-200,
-  main .text-slate-300 {
-    color: #1e293b !important;
-  }
-
-  main .text-slate-400,
-  main .text-slate-500 {
-    color: #475569 !important;
-  }
-
-  main .border-slate-800,
-  main .divide-slate-800\/50 > :not([hidden]) ~ :not([hidden]) {
-    border-color: #cbd5e1 !important;
   }
 
   main * {

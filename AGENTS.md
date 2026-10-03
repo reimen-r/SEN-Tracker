@@ -7,7 +7,7 @@ React + Vite + Express (TypeScript) app that infers Venezuelan power-grid outage
 Two hosts touch this repo. **Windows (primary):** prefix with `npm.cmd`, not `npm`/`bun` (`npm.ps1` is blocked, Bun not installed). **Linux** (this repo is a Windows drive mounted under `/run/media/…`): `npm.cmd` does not exist — run the same scripts with `npm run …` / `npx …`.
 
 - `run dev` — dev server (tsx `server.ts` + Vite HMR) on `0.0.0.0:3000`
-- `run lint` — gate: `tsc --noEmit && eslint .` (must be green)
+- `run lint` — gate: `tsc --noEmit && eslint .` (must be green). **Caveat:** `eslint .` also sweeps the vendored bundles in `.agents/skills/impeccable/scripts/*.js` and reports ~94 pre-existing errors there (`no-unused-expressions` on minified code). App source is clean — lint it with `eslint src server server.ts vite.config.ts` while that gap exists.
 - `run lint:tsc` / `run lint:eslint` — individually
 - `run test` — Vitest once; colocate `*.test.ts` next to source
 - `run build` — `vite build` + esbuild `server.ts` → `dist/server.cjs` (must pass)
@@ -15,6 +15,13 @@ Two hosts touch this repo. **Windows (primary):** prefix with `npm.cmd`, not `np
 - `run clean` — removes `dist/` (node-based)
 
 ## Architecture
+
+- **Design tokens** — `src/index.css` `@theme` block is the single source for color, type scale, radii, elevation and motion. `src/design/severity.ts` is the single source for severity/recovery semantics (tokens + thresholds + `severityFromDrop`/`severityFromScore`). Full rationale: `DESIGN.md`; machine-readable mirror: `.impeccable/design.json`. Product truth: `PRODUCT.md`.
+  - **No hex literals in `.tsx`.** No `text-[Npx]`. No emoji as icons (`lucide-react` only). Severity color/threshold is never recomputed per component.
+  - Severity and telemetry series are **separate color axes**: warm hues are reserved for severity, series are a cool family. Same for actions (`--color-action-*`) — a primary button is not a severity state.
+  - **Print:** `@media print` in `index.css` overrides *custom properties*, not utility classes. Any new token used inside `<main>` needs a print equivalent or PDF export breaks silently. `SeverityDistribution` is `no-print` on purpose ("Imprimir" = print the report).
+  - **PNG export:** an SVG inside `<img>` has no cascade, so `inlineCssVars()` in `src/utils/export.ts` resolves every `var(--token)` before serializing. Skip it and the exported chart is blank.
+  - Map corridor hue encodes **voltage** (765/400/230 kV), not an arbitrary per-corridor color.
 
 - **Server** — thin entry `server.ts` (dev Vite middleware / prod listen) + modules in `server/`:
   - `app.ts` — builds Express app: `trust proxy`, **per-route body limits** (`/api/analyze-gemini` 1mb, `/api/ioda` 100kb), request logging, health, static + SPA fallback.
@@ -24,7 +31,8 @@ Two hosts touch this repo. **Windows (primary):** prefix with `npm.cmd`, not `np
 - **Client** — `src/main.tsx` → `src/App.tsx`. State: scenario datasets + selected state + view. `DataIngestionModal` / `GeminiAnalystModal` lazy-loaded; views wrapped in `ErrorBoundary`. Session persisted to `localStorage` key `sen-ioda:v1:app` (bump the `v1` on schema change; loader validates schema and falls back to defaults).
 - **Data** — `src/data/entityRegistry.ts` (24 federal entities + `VENEZUELA_ENTITY_IDS`, shared with the server proxy whitelist), `src/data/syntheticTelemetry.ts` (the **only** telemetry generator: `generateScenario(profile)`; presets and the modal slider generator are thin adapters), `src/data/venezuelaGrid.ts` (incident presets as static profiles), `src/services/iodaApi.ts` (live fetch + v2 response parser → 0–100 normalization).
 - **Analysis** — `src/services/analyzer.ts` is a **facade**: `analyzeIodaDatasets(datasets)` composes `stateClassifier.ts` (per-entity inference: baseline, onset, recovery, night/ISP filters, severity thresholds — all live here), `nationalSynthesis.ts` (executive summary, recovery analysis, alert), and `proseRenderer.ts` (markdown + broadcast from one interface). Thresholds changed? Edit `stateClassifier.ts`, not the facade.
-- **Utils** — `src/utils/time.ts`, `export.ts` (CSV BOM + injection guard, JSON, SVG→PNG), `storage.ts`.
+- **Utils** — `src/utils/time.ts`, `export.ts` (CSV BOM + injection guard, JSON, SVG→PNG via `inlineCssVars`), `storage.ts`.
+- **Presentation** — `src/components/SeverityDistribution.tsx` (national distribution bar: replaces the 5-card KPI strip), `RecoveryNote.tsx` (icon + label + detail for recovery, used by chart/report/App), `useModalDialog.ts` (dialog semantics, focus trap, Escape, focus restore).
 
 ## Gotchas (agent would likely get these wrong)
 
@@ -35,7 +43,10 @@ Two hosts touch this repo. **Windows (primary):** prefix with `npm.cmd`, not `np
 - **IODA v2 response** is `{ data: [[ { datasource, values: "1 2 3", from, step } ]] }`; datasources: `ping-slash24` (probing), `merit-nt`/`ucsd-nt` (darknet), `bgp`. Normalized to 0–100 in `iodaApi.ts`. Proxy caches upstream 5 min — watch mode polls respect it.
 - **Charts are hand-rolled SVG** (`TelemetryChart.tsx`); recharts was removed for size. Extend the SVG, don't add a chart lib.
 - **Vigilancia** auto-polls every 1/5/15 min and notifies only on **severity escalations** (banner + `Notification`). The escalation logic (ranking, seeding, batch fetch) lives in `src/services/vigilance.ts` (pure functions, injectable fetch); it seeds the previous-severity map from the current report on enable to avoid a false first alert.
-- **Print** (`@media print` in `index.css`) hides `.no-print` + all controls, forces light report. The "Imprimir" button calls `window.print()`.
+- **Print** (`@media print` in `index.css`) hides `.no-print` + all controls, forces light report by **re-declaring the custom properties** in `:root` (20 of them). It must never target utility classes — the old version matched `main .bg-\[\#0c0e12\]`, so tokenizing the palette silently shipped dark cards to paper. The "Imprimir" button calls `window.print()`.
+- **`formatVET`/`formatVETClock` already append " VET"** to their return value. Appending the zone again in the UI rendered "16:45 VET VET" — that bug shipped twice before being caught.
+- **SVG has no `outline` box**: `:focus-visible` on a focusable SVG `<g>` paints nothing. The map marks the child `<path>` with `group-focus-visible:stroke-*` instead.
+- **Tailwind v4**: a bare `border-info` sets only `border-color`; preflight leaves `border: 0 solid`. Always write `border border-info`.
 - **Tailwind v4**: `@import "tailwindcss"` in `index.css`, config via `@tailwindcss/vite` plugin — there is **no** `tailwind.config.js`.
 - **`vite.config.ts`**: `server.hmr`/`watch` gated by `DISABLE_HMR` — do not touch (AI Studio editing mode).
 

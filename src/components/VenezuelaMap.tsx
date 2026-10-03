@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { StateAnalysisResult, OutageSeverity } from '../types';
 import { Radio, Zap, Cpu } from 'lucide-react';
-import { SeverityBadge, getSeverityFillColor } from './SeverityBadge';
+import { SeverityBadge } from './SeverityBadge';
+import { severityMapFill, severityToken, SEVERITY_ORDER } from '../design/severity';
 
 interface VenezuelaMapProps {
   stateResults: StateAnalysisResult[];
@@ -200,7 +201,7 @@ const TRANSMISSION_LINES = [
   {
     name: 'Troncal 765kV Guri - San Gerónimo - Arenosa',
     voltage: '765 kV',
-    color: '#ef4444',
+    color: 'var(--color-grid-765)',
     width: 3.5,
     dash: '',
     path: 'M 745 440 L 640 380 L 540 310 L 475 220 L 432 205',
@@ -209,7 +210,7 @@ const TRANSMISSION_LINES = [
   {
     name: 'Troncal 400kV Centro - Occidente (Yaracuy - El Tablazo)',
     voltage: '400 kV',
-    color: '#f97316',
+    color: 'var(--color-grid-400)',
     width: 2.5,
     dash: '6,3',
     path: 'M 432 205 L 395 190 L 320 185 L 230 190',
@@ -218,7 +219,7 @@ const TRANSMISSION_LINES = [
   {
     name: 'Troncal 400kV/230kV Capital (San Gerónimo - Santa Teresa - Caracas)',
     voltage: '400/230 kV',
-    color: '#eab308',
+    color: 'var(--color-grid-400)',
     width: 2.5,
     dash: '4,3',
     path: 'M 540 310 L 550 205 L 522 170',
@@ -227,7 +228,7 @@ const TRANSMISSION_LINES = [
   {
     name: 'Troncal 400kV Oriente (Guri - El Tigre - Barcelona)',
     voltage: '400 kV',
-    color: '#3b82f6',
+    color: 'var(--color-grid-400)',
     width: 2,
     dash: '4,4',
     path: 'M 745 440 L 680 320 L 665 210 L 735 165',
@@ -236,7 +237,7 @@ const TRANSMISSION_LINES = [
   {
     name: 'Troncal 230kV Andes (Arenosa - Barinas - Uribante - San Cristóbal)',
     voltage: '230 kV',
-    color: '#a855f7',
+    color: 'var(--color-grid-230)',
     width: 2,
     dash: '3,3',
     path: 'M 432 205 L 355 270 L 320 330 L 220 360 L 175 365',
@@ -271,87 +272,70 @@ export const VenezuelaMap: React.FC<VenezuelaMapProps> = ({
   }, [stateResults]);
 
   const getFillColor = (severity?: OutageSeverity) => {
-    return getSeverityFillColor(severity);
+    return severityMapFill(severity);
   };
 
   return (
-    <div className="relative flex flex-col h-full bg-[#161b22] border border-slate-700/50 rounded overflow-hidden shadow-lg">
+    <div className="relative flex flex-col h-full bg-surface border border-line rounded-card overflow-hidden shadow-raised">
       {/* Top Map Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-[#161b22] border-b border-slate-700/50">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-surface border-b border-line">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded bg-blue-500/20 border border-blue-500/40 text-blue-400">
+          <div className="p-1.5 rounded-control border border-info bg-info-surface text-info">
             <Radio className="w-4 h-4 animate-pulse" />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-white font-mono uppercase tracking-wider flex items-center gap-2">
+            <h3 className="text-label font-bold text-fg font-mono uppercase tracking-wider flex items-center gap-2">
               Cartografía Telemétrica // Red SEN
-              <span className="text-[10px] font-mono font-normal text-slate-400 bg-[#0c0e12] border border-slate-700/50 px-2 py-0.5 rounded">
+              <span className="text-label-sm font-mono font-normal text-fg-muted bg-canvas border border-line px-2 py-0.5 rounded-control">
                 24 Entidades
               </span>
             </h3>
-            <p className="text-[11px] text-slate-400 font-mono">
+            <p className="text-label text-fg-muted font-mono">
               Active Probing (/24s) + Darknet Telescope por estado
             </p>
           </div>
         </div>
 
         {/* Toggle Layers */}
-        <div className="flex items-center gap-2 text-xs font-mono">
+        <div className="flex items-center gap-2 text-label font-mono">
           <button
             type="button"
             onClick={() => setShowGridOverlay(!showGridOverlay)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded border transition-all ${
-              showGridOverlay
-                ? 'bg-red-500/20 text-red-300 border-red-500/50'
-                : 'bg-[#0c0e12] text-slate-400 border-slate-700/50 hover:text-slate-200'
-            }`}
+            aria-pressed={showGridOverlay}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-control border transition-colors duration-150 ${ showGridOverlay ? 'bg-sev-blackout-surface text-sev-blackout border-sev-blackout' : 'bg-canvas text-fg-muted border-line hover:text-fg' }`}
           >
-            <Zap className="w-3.5 h-3.5" />
-            Líneas 765kV/400kV
+            <Zap className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            Corredores 765/400/230 kV
           </button>
           <button
             type="button"
             onClick={() => setShowGenerationNodes(!showGenerationNodes)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded border transition-all ${
-              showGenerationNodes
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                : 'bg-[#0c0e12] text-slate-400 border-slate-700/50 hover:text-slate-200'
-            }`}
+            aria-pressed={showGenerationNodes}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-control border transition-colors duration-150 ${ showGenerationNodes ? 'bg-sev-moderate-surface text-sev-moderate border-sev-moderate' : 'bg-canvas text-fg-muted border-line hover:text-fg' }`}
           >
-            <Cpu className="w-3.5 h-3.5" />
-            Nodos & Guri
+            <Cpu className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            Nodos de generación
           </button>
         </div>
       </div>
 
       {/* SVG Container */}
-      <div className="relative flex-1 min-h-[420px] w-full flex items-center justify-center p-2 bg-[#0c0e12] overflow-hidden">
+      <div className="relative flex-1 min-h-[420px] w-full flex items-center justify-center p-2 bg-canvas overflow-hidden">
         <svg
           viewBox="100 20 850 740"
-          className="w-full h-full max-h-[560px] select-none filter drop-shadow-md"
+          className="w-full h-full max-h-[560px] select-none filter drop-"
         >
-          <defs>
-            <linearGradient id="gridGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#f97316" stopOpacity="0.8" />
-            </linearGradient>
-            <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-
           {/* Background subtle telemetry grid */}
           <pattern id="dotGrid" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
-            <circle cx="2" cy="2" r="0.75" fill="#334155" opacity="0.3" />
+            <circle cx="2" cy="2" r="0.75" fill="var(--color-line-strong)" opacity="0.3" />
           </pattern>
           <rect x="0" y="0" width="1000" height="800" fill="url(#dotGrid)" />
 
           {/* Caribbean Sea boundary label */}
-          <text x="500" y="70" fill="#475569" fontSize="12" fontFamily="monospace" letterSpacing="4" textAnchor="middle" opacity="0.6">
+          <text x="500" y="70" fill="var(--color-fg-subtle)" fontSize="12" fontFamily="var(--font-mono)" letterSpacing="4" textAnchor="middle" opacity="0.6">
             MAR CARIBE
           </text>
-          <text x="830" y="520" fill="#334155" fontSize="11" fontFamily="monospace" letterSpacing="3" textAnchor="middle" opacity="0.4">
+          <text x="830" y="520" fill="var(--color-line-strong)" fontSize="14" fontFamily="var(--font-mono)" letterSpacing="3" textAnchor="middle" opacity="0.4">
             CUENCA DEL ORINOCO
           </text>
 
@@ -367,45 +351,67 @@ export const VenezuelaMap: React.FC<VenezuelaMapProps> = ({
               return (
                 <g
                   key={entityPath.id}
-                  className="cursor-pointer transition-all duration-200"
+                  className="group cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${analysis?.entity.name ?? entityPath.name}: ${severityToken(severity).label}, caída ${Math.round(analysis?.dropPercentage ?? 0)} por ciento`}
+                  aria-checked={isSelected}
                   onClick={() => onSelectState(entityPath.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectState(entityPath.id);
+                    }
+                  }}
                   onMouseEnter={() => analysis && setHoveredState(analysis)}
                   onMouseLeave={() => setHoveredState(null)}
                 >
+                  {/* El foco entra por el <g>, y `outline` sobre un <g> de
+                      SVG no genera caja: hay que pintar el trazo del <path>
+                      hijo con el patrón group-focus-visible. */}
                   <path
                     d={entityPath.d}
                     fill={fill}
                     fillOpacity={isSelected ? 0.95 : isHovered ? 0.85 : 0.65}
-                    stroke={isSelected ? '#38bdf8' : isHovered ? '#f8fafc' : '#334155'}
-                    strokeWidth={isSelected ? 2.5 : isHovered ? 1.8 : 1.2}
-                    className="transition-all duration-150 hover:filter hover:brightness-125"
+                    stroke={isSelected ? 'var(--color-info)' : isHovered ? 'var(--color-fg)' : 'var(--color-canvas)'}
+                    strokeWidth={isSelected ? 3 : isHovered ? 2.4 : 1.6}
+                    className="transition-[stroke-width,filter] duration-150 hover:brightness-125 group-focus-visible:stroke-info group-focus-visible:stroke-[3px]"
                   />
                   {/* Entity label */}
                   <text
                     x={entityPath.cx + (entityPath.labelOffset?.dx || 0)}
                     y={entityPath.cy + (entityPath.labelOffset?.dy || 0)}
-                    fill={isSelected ? '#ffffff' : '#e2e8f0'}
-                    fontSize={entityPath.id === 'VE-A' || entityPath.id === 'VE-W' ? '9' : '11'}
+                    fill="var(--color-fg)"
+                    fontSize="11"
                     fontWeight={isSelected ? 'bold' : '600'}
-                    fontFamily="sans-serif"
+                    fontFamily="var(--font-mono)"
                     textAnchor="middle"
-                    className="pointer-events-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+                    stroke="var(--color-canvas)"
+                    strokeWidth={2.5}
+                    paintOrder="stroke"
+                    className="pointer-events-none"
                   >
                     {analysis?.entity.code || entityPath.name.slice(0, 3).toUpperCase()}
                   </text>
-                  {/* Percentage Drop Pill below code */}
+                  {/* Porcentaje de caída. El glifo de severidad no se
+                      repite aquí: con 24 entidades afectadas el mapa se
+                      volvía ilegible, y la leyenda y el badge ya dan el
+                      nivel por nombre además de por color. */}
                   {analysis && analysis.dropPercentage >= 25 && (
                     <text
                       x={entityPath.cx + (entityPath.labelOffset?.dx || 0)}
-                      y={entityPath.cy + (entityPath.labelOffset?.dy || 0) + 12}
-                      fill="#ffffff"
-                      fontSize="9"
-                      fontWeight="bold"
-                      fontFamily="monospace"
+                      y={entityPath.cy + (entityPath.labelOffset?.dy || 0) + 11}
+                      fill="var(--color-fg)"
+                      fontSize="13"
+                      fontWeight="600"
+                      fontFamily="var(--font-mono)"
                       textAnchor="middle"
-                      className="pointer-events-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+                      stroke="var(--color-canvas)"
+                      strokeWidth={2.5}
+                      paintOrder="stroke"
+                      className="pointer-events-none"
                     >
-                      -{Math.round(analysis.dropPercentage)}%
+                      −{Math.round(analysis.dropPercentage)}%
                     </text>
                   )}
                 </g>
@@ -447,22 +453,26 @@ export const VenezuelaMap: React.FC<VenezuelaMapProps> = ({
             <g id="grid-nodes" className="pointer-events-none">
               {GENERATION_NODES.map((node, idx) => (
                 <g key={idx}>
-                  {/* Node marker pulse */}
+                  {/* Marcador de nodo. Se distingue por radio además de
+                      por color: hidroeléctrica > subestación > térmica. */}
                   <circle
                     cx={node.x}
                     cy={node.y}
                     r={node.isHydro ? 8 : node.isSubstation ? 6 : 5}
-                    fill={node.isHydro ? '#0284c7' : node.isSubstation ? '#e11d48' : '#eab308'}
-                    stroke="#ffffff"
+                    fill={node.isHydro
+                      ? 'var(--color-node-hydro)'
+                      : node.isSubstation
+                      ? 'var(--color-node-substation)'
+                      : 'var(--color-node-thermal)'}
+                    stroke="var(--color-fg)"
                     strokeWidth="1.5"
-                    filter="url(#neonGlow)"
                   />
                   <circle
                     cx={node.x}
                     cy={node.y}
                     r={node.isHydro ? 14 : 10}
                     fill="none"
-                    stroke={node.isHydro ? '#38bdf8' : '#fb7185'}
+                    stroke={node.isHydro ? 'var(--color-info)' : 'var(--color-sev-blackout)'}
                     strokeWidth="1"
                     strokeDasharray="2,2"
                     opacity="0.7"
@@ -470,10 +480,10 @@ export const VenezuelaMap: React.FC<VenezuelaMapProps> = ({
                   <text
                     x={node.x + 10}
                     y={node.y + 3}
-                    fill="#f1f5f9"
-                    fontSize="9"
+                    fill="var(--color-fg)"
+                    fontSize="12"
                     fontWeight="bold"
-                    fontFamily="monospace"
+                    fontFamily="var(--font-mono)"
                     className="drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
                   >
                     {node.name.split(' (')[0]}
@@ -487,34 +497,34 @@ export const VenezuelaMap: React.FC<VenezuelaMapProps> = ({
         {/* Live Hover Tooltip */}
         {hoveredState && (
           <div
-            className="absolute bottom-4 left-4 max-w-xs bg-[#161b22] border border-slate-700/80 rounded p-3 shadow-2xl backdrop-blur-md z-30 pointer-events-none transition-all"
+            className="absolute bottom-4 left-4 max-w-xs bg-surface border border-line-strong rounded-control p-3 shadow-overlay backdrop-blur-md z-30 pointer-events-none transition-opacity duration-150"
           >
             <div className="flex items-center justify-between gap-2 mb-1.5">
-              <span className="font-semibold text-white text-sm flex items-center gap-1.5 font-mono">
-                <span className="w-2 h-2 rounded-full bg-blue-400" />
+              <span className="font-semibold text-fg text-sm flex items-center gap-1.5 font-mono">
+                <span className="w-2 h-2 rounded-full bg-info" />
                 {hoveredState.entity.name} ({hoveredState.entity.code})
               </span>
               <SeverityBadge severity={hoveredState.severity} size="md" />
             </div>
 
-            <div className="space-y-1 text-xs font-mono">
-              <div className="flex justify-between text-slate-300">
+            <div className="space-y-1 text-label font-mono">
+              <div className="flex justify-between text-fg-muted">
                 <span>Caída telemétrica:</span>
-                <span className="font-bold text-red-400">
+                <span className="font-bold text-sev-blackout">
                   {hoveredState.dropPercentage}% drop
                 </span>
               </div>
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-fg-muted">
                 <span>Puntaje mínimo:</span>
                 <span>{hoveredState.minimumScore} / 100</span>
               </div>
               {hoveredState.anomalyStartVET && (
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-fg-muted">
                   <span>Hora de inicio:</span>
-                  <span className="text-blue-400">{hoveredState.anomalyStartVET}</span>
+                  <span className="text-info">{hoveredState.anomalyStartVET}</span>
                 </div>
               )}
-              <p className="text-[11px] text-slate-300 pt-1.5 border-t border-slate-700/50 leading-tight font-sans">
+              <p className="text-label text-fg-muted pt-1.5 border-t border-line leading-tight font-sans">
                 {hoveredState.interpretation}
               </p>
             </div>
@@ -522,31 +532,60 @@ export const VenezuelaMap: React.FC<VenezuelaMapProps> = ({
         )}
       </div>
 
-      {/* Map Legend Footer */}
-      <div className="px-4 py-2.5 bg-[#161b22] border-t border-slate-700/50 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-3">
-          <span className="text-slate-500 font-mono text-[10px] uppercase tracking-wider">SEVERIDAD IODA:</span>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-emerald-600 border border-emerald-400/40" />
-            <span className="text-slate-300 text-[10px] font-mono">Normal (0-24%)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-amber-600 border border-amber-400/40" />
-            <span className="text-slate-300 text-[10px] font-mono">Moderado (25-50%)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-orange-600 border border-orange-400/40" />
-            <span className="text-slate-300 text-[10px] font-mono">Crítico (51-80%)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-red-600 border border-red-400/40" />
-            <span className="text-slate-300 text-[10px] font-mono">Apagón (&gt;80%)</span>
-          </div>
-        </div>
+      {/* Leyenda del mapa. La severidad se codifica con relleno + glifo, y
+          los corredores con tono = nivel de tensión: dos señales, no una. */}
+      <div className="px-4 py-3 bg-surface border-t border-line flex flex-wrap items-center gap-x-6 gap-y-3 text-label">
+        <fieldset className="flex items-center gap-3 flex-wrap">
+          <legend className="sr-only">Leyenda de severidad por estado</legend>
+          {SEVERITY_ORDER.map((sev) => {
+            const token = severityToken(sev);
+            return (
+              <span key={sev} className="flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="w-3 h-3 rounded-[3px] border"
+                  style={{ backgroundColor: token.mapFill, borderColor: token.mapFill }}
+                />
+                <span className="text-fg-muted text-label-sm font-mono">
+                  <span className="font-semibold">{token.glyph}</span> {token.labelWithThreshold}
+                </span>
+              </span>
+            );
+          })}
+        </fieldset>
 
-        <div className="text-[10px] text-slate-500 font-mono">
-          Click en una entidad para telemetría
-        </div>
+        <fieldset className="flex items-center gap-3 flex-wrap">
+          <legend className="sr-only">Leyenda de corredores por nivel de tensión</legend>
+          <span className="text-fg-subtle font-mono text-label-sm uppercase tracking-wider">
+            Corredores
+          </span>
+          {(
+            [
+              ['765 kV', 'var(--color-grid-765)', 3.5],
+              ['400 kV', 'var(--color-grid-400)', 2.5],
+              ['230 kV', 'var(--color-grid-230)', 2],
+            ] as const
+          ).map(([label, color, w]) => (
+            <span key={label} className="flex items-center gap-1.5">
+              <svg width="26" height="8" aria-hidden="true" className="shrink-0">
+                <line
+                  x1="0"
+                  y1="4"
+                  x2="26"
+                  y2="4"
+                  stroke={color}
+                  strokeWidth={w}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="text-fg-muted text-label-sm font-mono">{label}</span>
+            </span>
+          ))}
+        </fieldset>
+
+        <p className="text-label-sm text-fg-subtle ml-auto">
+          Selecciona una entidad para su telemetría
+        </p>
       </div>
     </div>
   );

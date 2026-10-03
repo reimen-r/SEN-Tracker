@@ -9,6 +9,39 @@
 const CSV_INJECTION_RE = /^[=+@]|^-(?![0-9])/;
 const CSV_NEEDS_QUOTING_RE = /[",\n\r]/;
 
+/** Atributos de presentación donde puede aparecer un `var(--token)`. */
+const VAR_RE = /var\(\s*(--[a-z0-9-]+)\s*(?:,[^)]*)?\)/gi;
+const STYLE_PROPS = ['fill', 'stroke', 'stop-color', 'font-family', 'caret-color'];
+
+/**
+ * Sustituye cada `var(--token)` de un subárbol SVG por el valor calculado en
+ * el documento vivo.
+ *
+ * Sin esto, exportar el gráfico a PNG produce un rectángulo vacío: un SVG
+ * dentro de un `<img>` corre como documento independiente y en modo
+ * restringido, sin cascada, así que ninguna custom property del tema resuelve
+ * y `fill`/`stroke` caen a su valor inicial. Es la misma clase de bug que el
+ * que tenía `@media print` seleccionando clases arbitrarias literales.
+ */
+export function inlineCssVars(root: Element, scope: Element = document.documentElement): void {
+  const computed = getComputedStyle(scope);
+  const resolve = (value: string): string =>
+    value.replace(VAR_RE, (_match, name: string) => {
+      const resolved = computed.getPropertyValue(name).trim();
+      return resolved || 'none';
+    });
+
+  const nodes: Element[] = [root, ...Array.from(root.querySelectorAll('*'))];
+  for (const node of nodes) {
+    for (const prop of STYLE_PROPS) {
+      const attr = node.getAttribute(prop);
+      if (attr && attr.includes('var(')) node.setAttribute(prop, resolve(attr));
+    }
+    const style = node.getAttribute('style');
+    if (style && style.includes('var(')) node.setAttribute('style', resolve(style));
+  }
+}
+
 /** Escapa una celda CSV (inyección + comillas + separadores). */
 export function escapeCell(value: string | number): string {
   let s = String(value);
@@ -53,7 +86,14 @@ export async function svgToPng(
 ): Promise<void> {
   const scale = opts.scale ?? 2;
   const filename = opts.filename ?? 'grafico.png';
-  const background = opts.background ?? '#0c0e12';
+  // El PNG exportado se rasteriza fuera del DOM, así que no hereda el color
+  // de fondo por cascada. Se lee del token para que no vuelva a quedar
+  // desincronizado del tema (incluido el tema de impresión).
+  const background =
+    opts.background ??
+    (getComputedStyle(document.documentElement)
+      .getPropertyValue('--color-canvas')
+      .trim() || '#0c0e12');
 
   await document.fonts.ready;
 
@@ -66,6 +106,13 @@ export async function svgToPng(
   clone.setAttribute('width', String(width));
   clone.setAttribute('height', String(height));
   clone.setAttribute('viewBox', svg.getAttribute('viewBox') || `0 0 ${width} ${height}`);
+
+  // Un SVG cargado dentro de un <img> es un documento separado y en modo
+  // restringido: no hereda la cascada del documento anfitrión, así que
+  // `var(--color-*)` no resuelve y cada trazo cae a `none`. Hay que
+  // sustituir cada custom property por su valor calculado ANTES de
+  // serializar, o el PNG sale en blanco.
+  inlineCssVars(clone, document.documentElement);
 
   const source = new XMLSerializer().serializeToString(clone);
   const url = URL.createObjectURL(
