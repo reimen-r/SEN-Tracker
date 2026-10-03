@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "platform": "web",
+  "surfaceMode": "operate",
+  "tokenSource": "src/index.css (@theme block)",
+  "semanticSource": "src/design/severity.ts",
+  "colors": {
+    "surface": {
+      "canvas": "#0c0e12",
+      "surface": "#161b22",
+      "raised": "#1c2128"
+    },
+    "line": {
+      "line": "#242e3b",
+      "lineStrong": "#364152"
+    },
+    "text": {
+      "fg": "#e6edf3",
+      "fgMuted": "#9fb0c0",
+      "fgSubtle": "#8496a8"
+    },
+    "info": {
+      "info": "#60a5fa",
+      "infoSurface": "#18253e"
+    },
+    "severity": {
+      "blackout": {
+        "fg": "#f87171",
+        "surface": "#311c22",
+        "map": "#dc2626"
+      },
+      "critical": {
+        "fg": "#fb923c",
+        "surface": "#33231e",
+        "map": "#ea580c"
+      },
+      "moderate": {
+        "fg": "#fbbf24",
+        "surface": "#31271e",
+        "map": "#d97706"
+      },
+      "normal": {
+        "fg": "#34d399",
+        "surface": "#132c2b",
+        "map": "#059669"
+      }
+    },
+    "action": {
+      "primary": {
+        "bg": "#2b5fd9",
+        "hover": "#3a6fe8",
+        "ink": "#f4f7ff"
+      },
+      "live": {
+        "bg": "#22c55e",
+        "hover": "#34d668",
+        "ink": "#03240f"
+      }
+    },
+    "series": {
+      "activeProbing": "#38bdf8",
+      "darknetTelescope": "#a78bfa",
+      "bgpPrefixes": "#22d3ee",
+      "compositeScore": "#e6edf3",
+      "compareComposite": "#8496a8"
+    },
+    "topology": {
+      "grid765": "#ef4444",
+      "grid400": "#f97316",
+      "grid230": "#eab308",
+      "nodeHydro": "#0284c7",
+      "nodeSubstation": "#e11d48",
+      "nodeThermal": "#ca8a04"
+    },
+    "axis": {
+      "axis": "#8496a8",
+      "axisRule": "#0c0e12"
+    }
+  },
+  "typography": {
+    "sans": "Fira Sans",
+    "mono": "Fira Code",
+    "display": "Chakra Petch",
+    "scale": {
+      "label-sm": "12px",
+      "label": "12px",
+      "body": "14px",
+      "metric": "30px"
+    },
+    "minimumSize": "12px",
+    "numericStyle": "tabular-nums"
+  },
+  "radii": {
+    "card": "14px",
+    "control": "8px",
+    "pill": "9999px"
+  },
+  "elevation": {
+    "raised": "0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px -2px rgb(0 0 0 / 0.45)",
+    "overlay": "0 2px 6px -2px rgb(0 0 0 / 0.5), 0 12px 32px -8px rgb(0 0 0 / 0.65)",
+    "rule": "offset and blur always; zero-offset colored halos removed"
+  },
+  "motion": {
+    "stateTransition": "transition-colors 150ms",
+    "mapStroke": "transition-[stroke-width,filter] 150ms",
+    "ambient": "motion-safe:animate-pulse (live dot, watch mode, blackout badge)",
+    "reducedMotionGuard": "@media (prefers-reduced-motion: reduce) in index.css",
+    "forbidden": [
+      "transition-all",
+      "unattributed animation"
+    ]
+  },
+  "focus": {
+    "pattern": ":focus-visible { outline: 2px solid var(--color-info); outline-offset: 2px }",
+    "svgNote": "outline paints no principal box on an SVG <g>; stroke the child <path> with group-focus-visible",
+    "scrollPaddingTop": "5.5rem"
+  },
+  "contrast": {
+    "target": "WCAG 2.2 AA",
+    "measuredOnSurface": {
+      "fg": 14.64,
+      "fgMuted": 7.78,
+      "fgSubtle": 5.69
+    },
+    "note": "the incumbent slate-500 was 3.63:1 and failed; replaced by fg-subtle"
+  },
+  "rules": [
+    "No hex literals in .tsx — add a token.",
+    "No text-[Npx] — the scale exists.",
+    "No emoji as icons; lucide-react, one stroke weight.",
+    "Severity is read from src/design/severity.ts, never recomputed per component.",
+    "Any new token used inside <main> needs a print equivalent or PDF export breaks silently.",
+    "PNG export must run inlineCssVars(); an SVG inside <img> has no cascade."
+  ]
+}
